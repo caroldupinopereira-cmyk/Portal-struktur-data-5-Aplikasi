@@ -1,0 +1,1 @@
+"""Komponen portal Struktur Data."""

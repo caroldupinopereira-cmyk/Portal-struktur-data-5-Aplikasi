@@ -1,0 +1,26 @@
+# Native controls follow the same compact neutral/blue palette as the portal CSS.
+[theme]
+base = "light"
+font = "sans-serif"
+baseFontSize = 14
+baseRadius = "8px"
+buttonRadius = "6px"
+showWidgetBorder = true
+headingFontSizes = ["36px", "24px", "20px", "16px", "14px", "12px"]
+headingFontWeights = [600, 600, 600, 600, 500, 500]
+
+[theme.light]
+primaryColor = "#2563eb"
+backgroundColor = "#fbfbfb"
+secondaryBackgroundColor = "#f2f2f2"
+textColor = "#26262a"
+borderColor = "#e5e5e5"
+linkColor = "#2563eb"
+
+[theme.dark]
+primaryColor = "#2563eb"
+backgroundColor = "#030303"
+secondaryBackgroundColor = "#171717"
+textColor = "#f5f5f5"
+borderColor = "#333333"
+linkColor = "#93b4ff"

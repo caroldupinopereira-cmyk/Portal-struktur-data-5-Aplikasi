@@ -1,0 +1,10 @@
+/* Loaded only on pages without sidebar content; removed when switching apps. */
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"] {
+  display: none !important;
+}
+[data-testid="stHeader"] {
+  left: 0;
+  width: 100%;
+}
