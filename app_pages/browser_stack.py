@@ -43,41 +43,72 @@ class Stack:
 # ==========================================
 # 2. HELPER MEMBACA RIWAYAT CHROME
 # ==========================================
-def get_chrome_history(limit=20):
-    history_path = os.path.expanduser(
+CONTOH_RIWAYAT = [
+    ("https://www.google.com", "Google"),
+    ("https://www.youtube.com", "YouTube"),
+    ("https://github.com", "GitHub"),
+    ("https://www.wikipedia.org", "Wikipedia"),
+    ("https://www.streamlit.io", "Streamlit"),
+]
+
+
+def get_local_history_path():
+    return os.path.expanduser(
         r"~\AppData\Local\Google\Chrome\User Data\Default\History"
     )
 
-    if not os.path.exists(history_path):
-        return []
 
-    temp_dir = tempfile.gettempdir()
-    temp_history = os.path.join(temp_dir, "Chrome_History_Streamlit")
-    shutil.copyfile(history_path, temp_history)
-
-    history_data = []
+def _query_history(db_path, limit):
+    conn = sqlite3.connect(db_path)
     try:
-        conn = sqlite3.connect(temp_history)
         cursor = conn.cursor()
         query = """
-            SELECT url, title 
-            FROM urls 
-            ORDER BY last_visit_time DESC 
+            SELECT url, title
+            FROM urls
+            ORDER BY last_visit_time DESC
             LIMIT ?
         """
         cursor.execute(query, (limit,))
         rows = cursor.fetchall()
-
-        for url, title in rows:
-            display_title = title if title else url
-            history_data.append((url, display_title))
-
+    finally:
         conn.close()
+
+    return [(url, title if title else url) for url, title in rows]
+
+
+def get_chrome_history(limit=20):
+    history_path = get_local_history_path()
+
+    if not os.path.exists(history_path):
+        return []
+
+    temp_history = os.path.join(tempfile.gettempdir(), "Chrome_History_Streamlit")
+    try:
+        shutil.copyfile(history_path, temp_history)
+        return _query_history(temp_history, limit)
+    except (OSError, sqlite3.Error):
+        return []
     finally:
         if os.path.exists(temp_history):
             os.remove(temp_history)
 
-    return history_data
+
+def read_uploaded_history(uploaded_file, limit=20):
+    fd, temp_path = tempfile.mkstemp(suffix=".sqlite3")
+    os.close(fd)
+    try:
+        with open(temp_path, "wb") as file:
+            file.write(uploaded_file.getbuffer())
+        return _query_history(temp_path, limit)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+def load_history(stack, history):
+    stack.clear()
+    for url, title in reversed(history):
+        stack.push((url, title))
 
 
 # ==========================================
@@ -139,16 +170,45 @@ col_left, col_right = st.columns(2)
 with col_left:
     st.subheader(":material/layers: Isi Tumpukan Stack (LIFO)")
 
-    if st.button("⚡ Muat Riwayat Chrome ke Stack", width="stretch"):
-        history = get_chrome_history(limit=15)
-        if history:
-            stack.clear()
-            for url, title in reversed(history):
-                stack.push((url, title))
-            st.success("Berhasil memuat riwayat Chrome ke Stack!")
-            st.rerun()
-        else:
-            st.error("Gagal membaca riwayat Chrome.")
+    if os.path.exists(get_local_history_path()):
+        if st.button("⚡ Muat Riwayat Chrome ke Stack", width="stretch"):
+            history = get_chrome_history(limit=15)
+            if history:
+                load_history(stack, history)
+                st.success("Berhasil memuat riwayat Chrome ke Stack!")
+                st.rerun()
+            else:
+                st.error("Gagal membaca riwayat Chrome.")
+    else:
+        st.caption(
+            "Riwayat Chrome otomatis hanya tersedia saat aplikasi dijalankan "
+            "di komputer sendiri. Di cloud, unggah file History atau pakai data contoh."
+        )
+
+    uploaded = st.file_uploader(
+        "Unggah file History Chrome",
+        help=(
+            "Salin file History dari folder profil Chrome, lalu unggah di sini. "
+            "Lokasi Windows: %LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\History"
+        ),
+    )
+    if uploaded is not None:
+        if st.button("Muat dari file yang diunggah", width="stretch"):
+            try:
+                history = read_uploaded_history(uploaded, limit=15)
+            except (OSError, sqlite3.Error):
+                history = []
+            if history:
+                load_history(stack, history)
+                st.success("Berhasil memuat riwayat dari file yang diunggah!")
+                st.rerun()
+            else:
+                st.error("File tidak valid atau tidak berisi riwayat Chrome.")
+
+    if st.button("🧪 Muat data contoh", width="stretch"):
+        load_history(stack, CONTOH_RIWAYAT)
+        st.success("Data contoh berhasil dimuat ke Stack!")
+        st.rerun()
 
     items = stack.to_list()
     if items:

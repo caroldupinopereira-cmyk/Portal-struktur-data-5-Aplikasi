@@ -15,7 +15,7 @@ Aplikasi akan tersedia di `https://portal-struktur-data-5-aplikasi.streamlit.app
 Catatan saat berjalan di cloud:
 
 - Database SQLite di `data/` bersifat sementara dan dapat kembali ke data awal saat aplikasi reboot.
-- Fitur "Muat Riwayat Chrome" hanya bekerja saat dijalankan lokal karena membaca profil Chrome di komputer pengguna.
+- Fitur "Muat Riwayat Chrome" otomatis hanya bekerja saat dijalankan lokal. Di cloud, gunakan unggah file `History` Chrome atau tombol **Muat data contoh**.
 - Tidak ada secret atau API key yang diperlukan.
 
 ## Menjalankan
