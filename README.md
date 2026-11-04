@@ -2,6 +2,22 @@
 
 Portal untuk membuka KasirKu (array), daftar tunggu pasien (single linked list), browser stack (LIFO), AntreanKu (FIFO), dan HotelKu (referensi objek).
 
+## Deploy ke Streamlit Community Cloud
+
+[![Deploy to Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=caroldupinopereira-cmyk/Portal-struktur-data-5-Aplikasi&branch=main&mainModule=app.py)
+
+1. Klik tombol di atas, lalu masuk dengan akun GitHub `caroldupinopereira-cmyk`.
+2. Pastikan isian: repository `caroldupinopereira-cmyk/Portal-struktur-data-5-Aplikasi`, branch `main`, main file path `app.py`.
+3. Klik **Deploy**.
+
+Aplikasi akan tersedia di `https://portal-struktur-data-5-aplikasi.streamlit.app`. Setiap `git push` ke `main` otomatis memicu deploy ulang.
+
+Catatan saat berjalan di cloud:
+
+- Database SQLite di `data/` bersifat sementara dan dapat kembali ke data awal saat aplikasi reboot.
+- Fitur "Muat Riwayat Chrome" hanya bekerja saat dijalankan lokal karena membaca profil Chrome di komputer pengguna.
+- Tidak ada secret atau API key yang diperlukan.
+
 ## Menjalankan
 
 ```powershell
