@@ -82,7 +82,6 @@ class Rak:
         self.kapasitas = kapasitas          # ditetapkan sekali, tidak pernah diubah
         self.data = [None] * kapasitas      # kotak kosong = None
         self.jumlah = 0                     # banyaknya kotak yang ada isinya
-        self.skor = [0, 0, 0]               # cari biasa, tebak tengah, lewat nomor
 
     def alamat(self, i):
         return ALAMAT_BASIS + i * UKURAN_ELEMEN
@@ -274,46 +273,6 @@ class Rak:
             yield ("ketemu", [i], pesan) if i >= 0 else ("gagal", [], pesan)
         yield "info", [], f"Selesai impor: {masuk} produk masuk ke rak."
 
-    def balap_langkah(self, nama):
-        # Syarat (dijaga tombolnya): rak rapat tanpa lubang, terurut nama, isi minimal 2.
-        kunci, n = nama.strip().lower(), self.jumlah
-        lo, hi, i, babak = 0, n - 1, 0, 0
-        biasa = tengah = 0
-        sel_b = sel_t = False
-        hasil = -1
-        self.skor = [0, 0, 0]
-        while not (sel_b and sel_t):
-            babak += 1
-            sorot = {} if sel_t else {k: "pudar" for k in range(n) if k < lo or k > hi}
-            teks = f"Babak {babak}: "
-            if not sel_b:
-                biasa += 1
-                sorot[i] = "emas"
-                teks += f"cari biasa buka [{i}]; "
-                if self.data[i].nama.lower() == kunci:
-                    sel_b, hasil = True, i
-                i += 1
-                sel_b = sel_b or i == n
-            if not sel_t:
-                mid = (lo + hi) // 2
-                tengah += 1
-                sorot[mid] = "ungu"
-                teks += f"tebak tengah buka [{mid}] (sisa [{lo}] sampai [{hi}])"
-                nama_tengah = self.data[mid].nama.lower()
-                lo, hi = (lo, hi) if nama_tengah == kunci else (mid + 1, hi) if nama_tengah < kunci else (lo, mid - 1)
-                sel_t = nama_tengah == kunci or lo > hi
-            self.skor = [biasa, tengah, 0]
-            yield "balap", sorot, teks.rstrip("; ")
-        self.skor = [biasa, tengah, 1 if hasil >= 0 else 0]
-        menang = "Tebak tengah menang." if tengah < biasa else "Cari biasa menang." if biasa < tengah else "Seri."
-        awal = f"'{nama}' ada di kotak [{hasil}]. " if hasil >= 0 else f"'{nama}' tidak ada di rak. "
-        akhir = (" Lewat nomor: 1 pemeriksaan, tapi hanya bisa kalau nomor kotaknya sudah diketahui."
-                 if hasil >= 0 else "")
-        yield (("ketemu" if hasil >= 0 else "gagal"), ({hasil: "hijau"} if hasil >= 0 else {}),
-               awal + f"Cari biasa: {biasa} pemeriksaan. Tebak tengah: {tengah} pemeriksaan. {menang}{akhir} "
-               "Makin banyak data, makin jauh selisihnya.")
-
-
 # =====================================================================
 # UJI LEWAT TEKS (jalankan dengan: python app_pages/kasir.py)
 # =====================================================================
@@ -369,10 +328,7 @@ def uji_teks():
     cetak(m for m in rak.urutkan_langkah("nama") if m[2])
     print("   Isi rak:", isi_rak(rak))
 
-    print("\n--- 11. Balapan cari 'Telur': cari biasa, tebak tengah, lewat nomor ---")
-    cetak(rak.balap_langkah("Telur"))
-
-    print("\n--- 12. Ubah nama langsung lewat nomor kotak (nama kembar ditolak) ---")
+    print("\n--- 11. Ubah nama langsung lewat nomor kotak (nama kembar ditolak) ---")
     r = Rak(kapasitas=3)
     r.tambah(Produk("Beras", 65000, 5))
     r.tambah(Produk("Gula", 16000, 9))
@@ -381,7 +337,7 @@ def uji_teks():
     r.ubah_indeks(0, nama="Beras Premium", harga=70000)
     print("   Isi rak:", [str(p) for p in r.data if p])
 
-    print("\n--- 13. Impor file CSV ke rak berkapasitas 8 ---")
+    print("\n--- 12. Impor file CSV ke rak berkapasitas 8 ---")
     with open("contoh_supplier.csv", "w", encoding="utf-8") as f:
         f.write(CSV_CONTOH)
     cetak(Rak(kapasitas=8).impor_langkah("contoh_supplier.csv"))
@@ -395,7 +351,7 @@ WARNA = {
     "latar": "#0f1626", "panel": "#172033", "kotak": "#212c44", "garis": "#33415e",
     "teks": "#e7eaf0", "redup": "#8a94a6", "gelap": "#0e1422", "tombol": "#222d45",
     "tombol_h": "#2f3d5c", "emas": "#d9bd8c", "hijau": "#84baa7", "mawar": "#cc8f94",
-    "ungu": "#a59dcb", "pudar": "#182134", "biru": "#7fa8d6", "abu": "#6b7385", "tosca": "#5fc9c0",
+    "ungu": "#a59dcb", "biru": "#7fa8d6", "abu": "#6b7385", "tosca": "#5fc9c0",
 }
 WARNA_JENIS = {"periksa": "emas", "bandingkan": "emas", "hapus": "mawar", "ketemu": "hijau",
                "geser": "ungu", "tukar": "ungu", "terurut": "hijau"}
@@ -414,7 +370,6 @@ FIELDS = {
     "cari": ["nomor", "nama"],
     "ubah": ["nomor", "nama", "baru", "harga", "stok"],
     "hapus": ["nomor", "nama"],
-    "balap": ["nama"],
 }
 
 CSS = """<style>
@@ -438,16 +393,9 @@ CSS = """<style>
 .kk-bx .st{position:absolute;left:0;right:0;bottom:0;height:6px}
 .kk-bx.kosong{background:#172033;border-style:dashed;color:#8a94a6;font-style:italic;font-size:11px;text-align:center}
 %STATUS%
-.kk-bx.pudar{border-color:#182134}
-.kk-bx.pudar:not(.kosong){background:#182134;color:#8a94a6}
 .kk-bx.pilih{outline:2px solid #e7eaf0;outline-offset:1px}
 .kk-info{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;font-size:12px;margin:6px 2px 0;color:#8a94a6}
 .kk-rumus{color:#7fa8d6;font:700 12px Consolas,Menlo,monospace}
-.kk-pap{margin-top:12px;padding:0 6px;font-size:13px;color:#e7eaf0}
-.kk-pp{display:flex;align-items:center;gap:10px;margin:5px 0}
-.kk-pn{width:110px;font-weight:700}
-.kk-pb{flex:1;max-width:380px;height:16px;border:1px solid #33415e;display:block}
-.kk-pb span{display:block;height:100%}
 .kk-pesan{text-align:center;font-weight:700;margin-top:12px;font-size:14px}
 .kk-konsep{background:#172033;color:#d9bd8c;font-weight:700;font-size:14px;padding:10px 14px;border-radius:6px;
   margin:8px 0;min-height:44px;font-family:"Segoe UI",system-ui,sans-serif}
@@ -457,7 +405,7 @@ CSS = """<style>
 CSS = CSS.replace("%STATUS%", "".join(
     f".kk-bx.{k}{{border-color:{WARNA[k]};border-width:2px}}"
     f".kk-bx.{k}:not(.kosong){{background:{WARNA[k]};color:#0e1422}}"
-    for k in ("emas", "hijau", "mawar", "ungu", "biru")))
+    for k in ("emas", "hijau", "mawar", "ungu")))
 
 S = st.session_state
 PH = {}   # placeholder yang diisi ulang saat animasi (dibuat ulang tiap kali skrip dijalankan)
@@ -497,8 +445,7 @@ ARTI_WARNA = [
     ("emas", "Emas: kotak sedang diperiksa atau dibandingkan, juga jalur cari biasa."),
     ("hijau", "Hijau: ketemu, berhasil ditambah, atau sudah terurut."),
     ("mawar", "Mawar: kotak dikosongkan atau terjadi kesalahan."),
-    ("ungu", "Ungu: kotak bergeser atau ditukar, juga jalur tebak tengah."),
-    ("biru", "Biru: jalur lewat nomor di papan skor."),
+    ("ungu", "Ungu: kotak bergeser atau ditukar."),
     ("hijau", "Strip hijau di dasar kotak: stok aman (5 atau lebih)."),
     ("emas", "Strip emas: stok menipis (kurang dari 5)."),
     ("mawar", "Strip mawar: stok habis (0)."),
@@ -527,7 +474,7 @@ def panduan(n):
              "3. Di tab 'Cari', klik Cari saat Nomor terisi: kotak langsung terbuka dalam 1 langkah. Lalu kosongkan "
              "Nomor, ketik nama produk, klik Cari lagi: kotak diperiksa satu per satu. Bandingkan banyaknya langkah di "
              "Catatan langkah.\n"
-             "4. Di tab 'Urutkan', klik Urutkan Nama. Setelah itu tab 'Balapan Cari' bisa dipakai."),
+             "4. Di tab 'Urutkan', klik Urutkan Nama untuk mengurutkan isi rak."),
         ]),
         ("Mengenal layar", "biru", [
             ("Bagian paling atas",
@@ -547,7 +494,7 @@ def panduan(n):
              "Baris alamat menampilkan rumus alamat kotak itu, misalnya: alamat = 0x1000 + 2 × 24 = 0x1030. Artinya "
              "komputer cukup menghitung alamatnya lalu melompat ke sana, tanpa mencari."),
             ("Tab aksi",
-             "Di bawah rak ada deretan tab: Tambah, Sisip, Cari, Ubah, Hapus, Urutkan, Balapan Cari, dan Data & File. Satu tab "
+             "Di bawah rak ada deretan tab: Tambah, Sisip, Cari, Ubah, Hapus, Urutkan, dan Data & File. Satu tab "
              "= satu jenis pekerjaan, lengkap dengan kolom isian dan tombolnya sendiri. Tekan Enter di kolom isian sama "
              "dengan menekan tombolnya. Tombol yang tampak pudar belum bisa dipakai, misalnya Hapus saat rak masih kosong."),
             ("Kotak penjelasan dan Catatan langkah",
@@ -584,7 +531,7 @@ def panduan(n):
              "atau Nama lama (dicari dulu, O(n)). Lalu isi Nama baru, Harga baru, dan/atau Stok baru. Kolom yang dikosongkan "
              "tidak diubah, jadi untuk ganti nama saja cukup isi Nomor dan Nama baru.\n"
              "Ditolak kalau Nama baru sudah dipakai produk lain, atau kalau Nomor dan Nama lama diisi tetapi tidak cocok. "
-             "Setelah nama diganti, urutan nama bisa berubah, jadi klik Urutkan lagi sebelum Balapan Cari."),
+             "Setelah nama diganti, urutan nama bisa berubah, jadi klik Urutkan lagi bila perlu."),
             ("Tab Hapus",
              "Mengosongkan satu kotak. Pilih lewat Nomor (O(1)) atau Nama (dicari dulu, O(n)), klik Hapus.\n"
              "Yang hilang hanya ISINYA. Kotaknya tetap ada (menjadi 'kosong (dipesan)'), kotak lain tidak bergeser, dan "
@@ -595,15 +542,6 @@ def panduan(n):
              "Sesudah itu dua kotak bersebelahan dibandingkan dan ditukar kalau salah urutan, diulang sampai urut "
              "(bubble sort). Produk tanpa harga atau stok ditaruh paling belakang. O(n²).\n"
              "Tampilkan: membaca semua kotak dari nomor 0 sampai terakhir satu per satu (traversal). O(n)."),
-            ("Tab Balapan Cari",
-             "Mengadu tiga cara mencari. Ketik nama lengkap produk (persis seperti di rak), klik Balapan Cari. Papan skor "
-             "menghitung berapa kotak yang dibuka tiap cara:\n"
-             "• Cari biasa (emas): membuka kotak satu per satu.\n"
-             "• Tebak tengah (ungu): membuka kotak di tengah, lalu mencoret separuh yang pasti salah, diulang. Cepat, tapi "
-             "hanya bisa kalau rak urut nama dan tidak ada lubang.\n"
-             "• Lewat nomor (biru): 1 langkah saja, tapi hanya kalau nomornya sudah diketahui.\n"
-             "Tombol baru menyala kalau rak punya minimal 2 produk, tidak ada lubang, dan sudah urut Nama. Kalau belum, "
-             "klik Urutkan > Nama dulu."),
             ("Tab Data & File",
              "• Data Contoh: mengisi rak dengan produk contoh (isi lama dibuang). Kalau kotak kurang, sisanya ditolak.\n"
              "• Muat CSV: unggah file CSV berformat nama,harga,stok dengan baris pertama sebagai judul, lalu klik Muat CSV. "
@@ -640,14 +578,13 @@ def panduan(n):
             ("'Nomor dan nama tidak cocok'", "Nomor menunjuk produk lain dari nama yang diketik. Isi salah satunya saja, cukup Nomor."),
             ("'Harga dan stok harus angka'", "Tulis angka bulat tidak negatif, atau kosongkan. Titik hanya untuk ribuan, contoh 4.500."),
             ("'Sisip ... tidak ada kotak kosong di sebelah kanan'", "Isi tidak punya tempat untuk bergeser ke kanan. Pilih nomor lain, atau kosongkan kotak di sebelah kanan dulu."),
-            ("Tombol Balapan Cari pudar", "Syaratnya belum terpenuhi (minimal 2 produk, tidak ada lubang, urut Nama). Baca baris Saran, lalu klik Urutkan > Nama."),
         ]),
     ]
 
 
 # ---------- keadaan (session state) ----------
 def init_state():
-    awal = dict(rak=None, sorot={}, tetap={}, terpilih=None, papan=False, log=[], banner=None,
+    awal = dict(rak=None, sorot={}, tetap={}, terpilih=None, log=[], banner=None,
                 konsep="", rumus=RUMUS_AWAL, kecepatan=6, v_pesan=10, bersih=[])
     for k, v in awal.items():
         S.setdefault(k, v)
@@ -679,15 +616,15 @@ def saran():
     if r.jumlah == 0:
         return "Saran: semua kotak masih 'kosong (dipesan)'. Buka tab Data & File lalu klik Data Contoh, atau isi nama di tab Tambah."
     if r.jumlah == r.kapasitas and r.terurut():
-        return "Rak penuh dan sudah urut. Array tidak bisa ditambah. Coba Balapan Cari, atau kosongkan satu kotak / Mulai Ulang."
+        return "Rak penuh dan sudah urut. Array tidak bisa ditambah. Kosongkan satu kotak atau klik Mulai Ulang."
     if r.jumlah == r.kapasitas:
-        return "Rak penuh, array tidak bisa ditambah. Klik Urutkan Nama agar Balapan Cari menyala, atau kosongkan satu kotak / Mulai Ulang."
+        return "Rak penuh, array tidak bisa ditambah. Klik Urutkan Nama untuk merapikan urutan, atau kosongkan satu kotak / Mulai Ulang."
     if not r.rapat():
-        return ("Saran: ada kotak kosong di tengah rak (lubang). Tambah akan mengisi lubang paling kiri. Balapan Cari menyala "
-                "setelah rak rapat dan urut: klik Urutkan Nama.")
+        return ("Saran: ada kotak kosong di tengah rak (lubang). Tambah akan mengisi lubang paling kiri. "
+                "Klik Urutkan Nama untuk merapatkan isi ke kiri.")
     if not r.terurut():
-        return "Saran: klik Urutkan Nama di tab Urutkan, maka Balapan Cari akan menyala."
-    return "Rak sudah urut. Ketik nama produk di tab Balapan Cari, lalu klik Balapan Cari."
+        return "Saran: klik Urutkan Nama di tab Urutkan agar isi rak berurutan."
+    return "Rak sudah urut. Tambah produk baru lewat tab Tambah, atau ubah data lewat tab Ubah."
 
 
 def html_kotak(i, p, status, dipilih):
@@ -705,27 +642,14 @@ def html_kotak(i, p, status, dipilih):
             f'<div class="{" ".join(kelas)}">{isi}</div></div>')
 
 
-def html_papan():
-    r, baris = S.rak, ""
-    for k, (nama, warna) in enumerate([("Cari biasa", "emas"), ("Tebak tengah", "ungu"), ("Lewat nomor", "biru")]):
-        skor = r.skor[k]
-        pct = min(100, 100 * skor / max(1, r.jumlah))
-        baris += (f'<div class="kk-pp"><span class="kk-pn" style="color:{WARNA[warna]}">{nama}</span>'
-                  f'<span class="kk-pb"><span style="width:{pct}%;background:{WARNA[warna]}"></span></span>'
-                  f'<b>{skor} pemeriksaan</b></div>')
-    return f'<div class="kk-pap">{baris}</div>'
-
-
 def gambar():
-    """Menggambar ulang rak (dan banner, saran, papan skor) ke dalam satu placeholder."""
+    """Menggambar ulang rak (dan banner, saran) ke dalam satu placeholder."""
     r = S.rak
     status = {**S.tetap, **S.sorot}
     kotak = "".join(html_kotak(i, r.data[i], status.get(i), i == S.terpilih) for i in range(r.kapasitas))
     kolom = min(r.kapasitas, KOLOM)
     grid = f'<div class="kk-grid" style="grid-template-columns:repeat({kolom},minmax(0,88px))">{kotak}</div>'
-    if S.papan:
-        bawah = html_papan()
-    elif r.jumlah < r.kapasitas:
+    if r.jumlah < r.kapasitas:
         catatan = "" if r.rapat() else "  (lubang bekas Hapus diisi lebih dulu)"
         bawah = (f'<div class="kk-pesan" style="color:{WARNA["hijau"]}">'
                  f'Tambah berikutnya masuk ke kotak [{r.kosong_pertama()}]{esc(catatan)}</div>')
@@ -772,15 +696,15 @@ def tampil_rumus(i, tampil=True):
 
 # ---------- menjalankan langkah (animasi) ----------
 def kilat(indeks, warna, lama=1.3):
-    S.sorot, S.papan = {i: warna for i in indeks}, False
+    S.sorot = {i: warna for i in indeks}
     gambar()
     time.sleep(lama)
     S.sorot = {}
 
 
-def mulai(gen, konsep, papan=False, selesai=None):
+def mulai(gen, konsep, selesai=None):
     """Menjalankan generator langkah demi langkah dan menggambar tiap langkahnya."""
-    S.sorot, S.tetap, S.terpilih, S.papan, S.sibuk = {}, {}, None, papan, True
+    S.sorot, S.tetap, S.terpilih, S.sibuk = {}, {}, None, True
     bersih_isian_pilih()
     set_konsep(konsep)
     jeda = (1100 - S.kecepatan * 100) / 1000
@@ -966,14 +890,6 @@ def aksi_hapus():
               selesai=lambda: bersih_isian("hapus"))
 
 
-def aksi_balap():
-    if nama := perlu_nama("balap", "Ketik nama produk yang mau dicari (pakai nama yang ada di rak)."):
-        mulai(S.rak.balap_langkah(nama),
-              "BALAPAN: cari biasa (emas) membuka kotak satu per satu, tebak tengah (ungu) membuka kotak di tengah lalu "
-              "mencoret separuh yang pasti salah (hanya bisa karena rak rapat dan urut). Lewat nomor (biru) cuma 1 langkah, "
-              "tapi butuh nomor yang sudah diketahui.", True)
-
-
 def aksi_tampil():
     mulai(S.rak.tampil_langkah(), "TRAVERSAL: membaca semua kotak dari nomor 0 sampai terakhir, kotak kosong dilewati  ->  O(n)")
 
@@ -996,7 +912,7 @@ def aksi_impor(unggahan):
 
 def ganti_rak(pesan):
     S.rak = Rak(S.rak.kapasitas)
-    S.sorot, S.tetap, S.terpilih, S.papan = {}, {}, None, False
+    S.sorot, S.tetap, S.terpilih = {}, {}, None
     bersih_isian_pilih()
     catat(pesan)
 
@@ -1043,7 +959,7 @@ def pilih_kotak():
 # ---------- layar Pesan Memori ----------
 def kunci_memori(n):
     S.rak = Rak(n)
-    S.sorot, S.tetap, S.terpilih, S.papan, S.banner, S.log = {}, {}, None, False, None, []
+    S.sorot, S.tetap, S.terpilih, S.banner, S.log = {}, {}, None, None, []
     S.rumus = RUMUS_AWAL
     bersih_isian()
     catat(f"Memori dikunci: {n} kotak dipesan, bernomor [0] sampai [{n - 1}]. Ukuran ini tidak bisa diubah lagi.", tampil=False)
@@ -1053,7 +969,7 @@ def kunci_memori(n):
 
 def mulai_ulang():
     S.v_pesan = S.rak.kapasitas
-    S.rak, S.sorot, S.tetap, S.terpilih, S.papan, S.banner = None, {}, {}, None, False, None
+    S.rak, S.sorot, S.tetap, S.terpilih, S.banner = None, {}, {}, None, None
     st.rerun()
 
 
@@ -1116,7 +1032,6 @@ def kartu_form(kunci, judul, ket, daftar, tombol, aksi, aktif=True, petunjuk=Non
 def isi_tab(tabs):
     r = S.rak
     ada = r.jumlah > 0
-    bisa_balap = r.jumlah >= 2 and r.rapat() and r.terurut()
 
     with tabs[0]:
         kartu_form("tambah", "Tambah produk", "Menaruh produk baru di kotak kosong paling kiri. Hanya Nama yang wajib diisi.",
@@ -1153,11 +1068,6 @@ def isi_tab(tabs):
         if c[3].button("Tampilkan", key="tampil", disabled=not ada, width="stretch"):
             jalankan_aksi(aksi_tampil)
     with tabs[6]:
-        kartu_form("balap", "Balapan Cari",
-                   "Mengadu cari biasa, tebak tengah, dan lewat nomor. Aktif jika rak tanpa lubang dan sudah urut Nama.",
-                   [("nama", "Nama produk (lengkap)", 30)], "Balapan Cari", aksi_balap, aktif=bisa_balap,
-                   petunjuk="Belum aktif: butuh minimal 2 produk, tidak ada lubang, dan urut Nama. Klik Urutkan Nama dulu.")
-    with tabs[7]:
         st.markdown("**Data & File**")
         st.caption("Mengisi rak dari data contoh atau file CSV supplier, atau membuang semua isinya.")
         a, b, c = st.columns(3)
@@ -1213,7 +1123,7 @@ def main():
     PH["rak"] = st.empty()
     st.selectbox("Pilih kotak (mengisi Nomor di tab Sisip, Cari, Ubah, Hapus dan menampilkan alamat memorinya)",
                  ["-"] + list(range(S.rak.kapasitas)), key="pilih_kotak", on_change=pilih_kotak)
-    tabs = st.tabs(["Tambah", "Sisip", "Cari", "Ubah", "Hapus", "Urutkan", "Balapan Cari", "Data & File"])
+    tabs = st.tabs(["Tambah", "Sisip", "Cari", "Ubah", "Hapus", "Urutkan", "Data & File"])
     PH["konsep"] = st.empty()
     st.caption("Catatan langkah (yang terbaru di paling atas)")
     PH["log"] = st.empty()
