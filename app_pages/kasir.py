@@ -25,6 +25,8 @@ from dataclasses import dataclass
 
 import streamlit as st
 from portal.sidebar import sidebar_header
+from portal.theme import apply_theme
+from portal import ui
 
 # Simulasi alamat memori: tiap produk dianggap memakai 24 byte (hanya untuk peraga).
 ALAMAT_BASIS = 0x1000
@@ -349,7 +351,7 @@ def uji_teks():
 FONT = "Segoe UI"
 WARNA = {
     "latar": "#0f1626", "panel": "#172033", "kotak": "#212c44", "garis": "#33415e",
-    "teks": "#e7eaf0", "redup": "#8a94a6", "gelap": "#0e1422", "tombol": "#222d45",
+    "teks": "var(--fg)", "redup": "#8a94a6", "gelap": "#0e1422", "tombol": "#222d45",
     "tombol_h": "#2f3d5c", "emas": "#d9bd8c", "hijau": "#84baa7", "mawar": "#cc8f94",
     "ungu": "#a59dcb", "biru": "#7fa8d6", "abu": "#6b7385", "tosca": "#5fc9c0",
 }
@@ -374,32 +376,30 @@ FIELDS = {
 
 CSS = """<style>
 .block-container{padding-top:2rem;max-width:1200px}
-.kk-judul{font-size:30px;font-weight:800;background:linear-gradient(90deg,#5fc9c0,#7fa8d6);
-  -webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;line-height:1.3}
-.kk-mem{color:#84baa7;font-weight:700;font-size:14px;margin:2px 0 6px}
+.kk-mem{color:light-dark(#047857,#84baa7);font-weight:700;font-size:14px;margin:2px 0 6px}
 .kk-bn{border-radius:6px;padding:8px 12px;font-size:13px;font-weight:700;margin:4px 0;font-family:"Segoe UI",system-ui,sans-serif}
-.kk-bn.info{background:#3b3220;color:#d9bd8c}
-.kk-bn.gagal{background:#3a2226;color:#cc8f94}
-.kk-saran{color:#84baa7;font-weight:700;font-size:14px;margin:6px 0 4px}
-.kk-rak{background:#172033;border-radius:10px;padding:14px 10px;margin:6px 0;font-family:"Segoe UI",system-ui,sans-serif}
+.kk-bn.info{background:light-dark(#fdf6e3,#3b3220);color:light-dark(#8a6d1f,#d9bd8c);border:1px solid light-dark(#f0e2b8,#554a2d)}
+.kk-bn.gagal{background:light-dark(#fdecee,#3a2226);color:light-dark(#a33a45,#cc8f94);border:1px solid light-dark(#f4c9ce,#5a3438)}
+.kk-saran{color:light-dark(#047857,#84baa7);font-weight:700;font-size:14px;margin:6px 0 4px}
+.kk-rak{background:light-dark(#f8fafc,#172033);border:1px solid var(--border);border-radius:10px;padding:14px 10px;margin:6px 0;font-family:"Segoe UI",system-ui,sans-serif}
 .kk-grid{display:grid;justify-content:center;gap:8px}
 .kk-sl{text-align:center;min-width:0}
-.kk-no{color:#e7eaf0;font:700 13px Consolas,Menlo,monospace}
-.kk-ad{color:#8a94a6;font:10px Consolas,Menlo,monospace;margin-bottom:3px}
-.kk-bx{position:relative;height:92px;box-sizing:border-box;border:1px solid #33415e;background:#212c44;color:#e7eaf0;
+.kk-no{color:var(--fg);font:700 13px Consolas,Menlo,monospace}
+.kk-ad{color:var(--muted);font:10px Consolas,Menlo,monospace;margin-bottom:3px}
+.kk-bx{position:relative;height:92px;box-sizing:border-box;border:1px solid var(--border);background:light-dark(#ffffff,#212c44);color:var(--fg);
   overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 4px 10px;line-height:1.25}
 .kk-bx .nm{font-weight:700;font-size:12px;word-break:break-word;margin-bottom:8px}
 .kk-bx .tx{font-size:11px}
 .kk-bx .st{position:absolute;left:0;right:0;bottom:0;height:6px}
-.kk-bx.kosong{background:#172033;border-style:dashed;color:#8a94a6;font-style:italic;font-size:11px;text-align:center}
+.kk-bx.kosong{background:light-dark(#f1f5f9,#172033);border-style:dashed;color:var(--muted);font-style:italic;font-size:11px;text-align:center}
 %STATUS%
-.kk-bx.pilih{outline:2px solid #e7eaf0;outline-offset:1px}
-.kk-info{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;font-size:12px;margin:6px 2px 0;color:#8a94a6}
-.kk-rumus{color:#7fa8d6;font:700 12px Consolas,Menlo,monospace}
+.kk-bx.pilih{outline:2px solid var(--fg);outline-offset:1px}
+.kk-info{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;font-size:12px;margin:6px 2px 0;color:var(--muted)}
+.kk-rumus{color:light-dark(#2563eb,#7fa8d6);font:700 12px Consolas,Menlo,monospace}
 .kk-pesan{text-align:center;font-weight:700;margin-top:12px;font-size:14px}
-.kk-konsep{background:#172033;color:#d9bd8c;font-weight:700;font-size:14px;padding:10px 14px;border-radius:6px;
+.kk-konsep{background:light-dark(#f8fafc,#172033);color:light-dark(#8a6d1f,#d9bd8c);border:1px solid var(--border);font-weight:700;font-size:14px;padding:10px 14px;border-radius:6px;
   margin:8px 0;min-height:44px;font-family:"Segoe UI",system-ui,sans-serif}
-.kk-log{background:#0f1626;color:#e7eaf0;border:1px solid #33415e;border-radius:4px;padding:8px 10px;
+.kk-log{background:light-dark(#f8fafc,#0f1626);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;
   height:170px;overflow-y:auto;font:13px Consolas,Menlo,monospace;line-height:1.5}
 </style>"""
 CSS = CSS.replace("%STATUS%", "".join(
@@ -978,7 +978,9 @@ def set_pesan(n):
 
 
 def layar_pesan():
-    st.markdown('<span class="kk-judul">Pesan Memori</span>', unsafe_allow_html=True)
+    ui.app_header("kasir", "KasirKu: Rak Produk", "Array · Pesan memori",
+                  "Tentukan jumlah kotak sebelum array dikunci.")
+    ui.page_header("Pesan Memori")
     st.markdown("**Sebelum mulai, kita harus memesan memori dulu.**")
     st.write("Array itu seperti rak loker: jumlah lokernya ditentukan SEKALI di awal dan TIDAK bisa ditambah atau "
              "dikurangi lagi. Pilih berapa kotak yang kamu butuhkan, lalu kunci.")
@@ -992,22 +994,25 @@ def layar_pesan():
                     f'<div class="kk-bx kosong">kosong<br>(dipesan)</div></div>' for i in range(n))
     st.markdown(f'<div class="kk-rak"><div class="kk-grid" style="grid-template-columns:'
                 f'repeat({min(n, KOLOM)},minmax(0,70px))">{kotak}</div></div>', unsafe_allow_html=True)
-    if st.button("🔒 Kunci Memori", type="primary"):
+    if st.button("Kunci Memori", type="primary", icon=":material/lock:"):
         kunci_memori(int(n))
         st.rerun()
 
 
-# ---------- layar utama ----------
-def header():
-    a, b = st.columns([5, 1])
-    a.markdown('<span class="kk-judul">KasirKu: Rak Produk</span>', unsafe_allow_html=True)
+def aksi_mulai_ulang():
     if S.rak.jumlah:
-        with b.popover("Mulai Ulang", width="stretch"):
+        with st.popover("Mulai Ulang", width="stretch"):
             st.write("Semua data di rak akan dibuang dan kamu kembali memesan memori baru (seperti membuat array baru). Lanjutkan?")
             if st.button("Ya, mulai ulang", key="ya_ulang"):
                 mulai_ulang()
-    elif b.button("Mulai Ulang", width="stretch"):
+    elif st.button("Mulai Ulang", width="stretch"):
         mulai_ulang()
+
+
+# ---------- layar utama ----------
+def header():
+    ui.app_header("kasir", "KasirKu: Rak Produk", "Array · Rak produk",
+                  "Amati operasi array melalui simulasi rak produk toko.", aksi=aksi_mulai_ulang)
     st.markdown(f'<div class="kk-bn info">{esc(PERHATIAN)}</div>', unsafe_allow_html=True)
 
 
@@ -1086,7 +1091,7 @@ def isi_tab(tabs):
 
 
 def tampil_panduan(n):
-    with st.expander("📖 Panduan (ditulis untuk pemula)"):
+    with st.expander("Panduan (ditulis untuk pemula)", icon=":material/menu_book:"):
         st.caption("Tidak perlu paham pemrograman dulu. Klik tab di bawah untuk pindah bagian.")
         tabs = st.tabs(["Mulai", "Layar", "Aksi", "Aturan", "Istilah", "Pesan", "Warna"])
         for tab, (judul, warna, isi) in zip(tabs, panduan(n)):
@@ -1103,6 +1108,7 @@ def tampil_panduan(n):
 
 def main():
     st.set_page_config(page_title="KasirKu - Rak Produk (Array)", page_icon=":material/inventory_2:", layout="wide")
+    apply_theme()
     st.markdown(CSS, unsafe_allow_html=True)
     init_state()
     proses_bersih()

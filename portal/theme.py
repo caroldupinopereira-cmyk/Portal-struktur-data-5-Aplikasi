@@ -14,7 +14,7 @@ def _stylesheet(name: str, modified: int) -> str:
 
 def apply_theme():
     styles = []
-    for name in ("kumo-tokens.css", "portal.css"):
+    for name in ("kumo-tokens.css", "portal.css", "app.css"):
         path = ASSETS / name
         styles.append(_stylesheet(name, path.stat().st_mtime_ns))
     css = "\n".join(styles)

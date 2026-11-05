@@ -5,6 +5,9 @@ import tempfile
 import webbrowser
 import streamlit as st
 
+from portal.theme import apply_theme
+from portal.ui import app_header, empty_state, page_header
+
 
 # ==========================================
 # 1. STRUKTUR DATA STACK (LIFO)
@@ -117,12 +120,15 @@ def load_history(stack, history):
 st.set_page_config(
     page_title="Simulasi Browser Stack", page_icon=":material/layers:", layout="wide"
 )
+apply_theme()
 
 stack = Stack()
 
-st.title(":material/layers: Simulasi Browser Back Button dengan Stack (LIFO)")
-st.caption(
-    "Aplikasi web interaktif untuk memvisualisasikan struktur data Stack pada riwayat penelusuran web."
+app_header(
+    "browser_stack",
+    "Simulasi Browser Back Button dengan Stack (LIFO)",
+    "Stack · LIFO",
+    "Aplikasi web interaktif untuk memvisualisasikan struktur data Stack pada riwayat penelusuran web.",
 )
 
 # --- TOP BAR: Navigasi & Input ---
@@ -130,10 +136,10 @@ col_back, col_input, col_btn = st.columns([1, 4, 1])
 
 with col_back:
     if st.button(
-        "◀ Back (Pop)", width="stretch", disabled=stack.size() <= 1
+        "Back (Pop)", icon=":material/arrow_back:", width="stretch", disabled=stack.size() <= 1
     ):
         popped_url, popped_title = stack.pop()
-        st.toast(f"POP: Keluar dari '{popped_title}'", icon="⬅️")
+        st.toast(f"POP: Keluar dari '{popped_title}'", icon=":material/arrow_back:")
         st.rerun()
 
 with col_input:
@@ -144,7 +150,7 @@ with col_input:
     )
 
 with col_btn:
-    if st.button("Push URL", width="stretch"):
+    if st.button("Push URL", icon=":material/add_link:", width="stretch"):
         if user_url.strip():
             full_url = (
                 user_url
@@ -152,7 +158,7 @@ with col_btn:
                 else "https://" + user_url
             )
             stack.push((full_url, user_url))
-            st.toast(f"PUSH: {user_url}", icon="➡️")
+            st.toast(f"PUSH: {user_url}", icon=":material/arrow_forward:")
             st.rerun()
 
 st.divider()
@@ -160,18 +166,18 @@ st.divider()
 # --- HALAMAN AKTIF DISPLAY ---
 top_item = stack.peek()
 if top_item:
-    st.info(f"🌐 **Halaman Aktif Saat Ini (Top of Stack):** {top_item[1]}")
+    st.info(f"**Halaman Aktif Saat Ini (Top of Stack):** {top_item[1]}", icon=":material/language:")
 else:
-    st.warning("🌐 **Halaman Aktif Saat Ini:** (Stack Kosong)")
+    st.warning("**Halaman Aktif Saat Ini:** (Stack Kosong)", icon=":material/language:")
 
 # --- BODY AREA (2 KOLOM) ---
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader(":material/layers: Isi Tumpukan Stack (LIFO)")
+    page_header("Isi Tumpukan Stack (LIFO)", ikon="layers")
 
     if os.path.exists(get_local_history_path()):
-        if st.button("⚡ Muat Riwayat Chrome ke Stack", width="stretch"):
+        if st.button("Muat Riwayat Chrome ke Stack", icon=":material/history:", width="stretch"):
             history = get_chrome_history(limit=15)
             if history:
                 load_history(stack, history)
@@ -193,7 +199,7 @@ with col_left:
         ),
     )
     if uploaded is not None:
-        if st.button("Muat dari file yang diunggah", width="stretch"):
+        if st.button("Muat dari file yang diunggah", icon=":material/upload_file:", width="stretch"):
             try:
                 history = read_uploaded_history(uploaded, limit=15)
             except (OSError, sqlite3.Error):
@@ -205,7 +211,7 @@ with col_left:
             else:
                 st.error("File tidak valid atau tidak berisi riwayat Chrome.")
 
-    if st.button("🧪 Muat data contoh", width="stretch"):
+    if st.button("Muat data contoh", icon=":material/science:", width="stretch"):
         load_history(stack, CONTOH_RIWAYAT)
         st.success("Data contoh berhasil dimuat ke Stack!")
         st.rerun()
@@ -214,25 +220,25 @@ with col_left:
     if items:
         for idx, (url, title) in enumerate(reversed(items)):
             is_top = idx == 0
-            prefix = "🔥 [TOP] " if is_top else "📍 "
+            prefix = ":material/arrow_upward: " if is_top else ":material/link: "
 
             col_item, col_open = st.columns([4, 1])
             with col_item:
                 if is_top:
-                    st.markdown(f"**{prefix}{title}**")
+                    st.markdown(f"**{prefix}[TOP] {title}**")
                 else:
-                    st.write(f"{prefix}{title}")
+                    st.markdown(f"{prefix}{title}")
 
             with col_open:
-                st.link_button("Buka 🔗", url=url, width="stretch")
+                st.link_button("Buka", icon=":material/open_in_new:", url=url, width="stretch")
     else:
-        st.write("*Stack masih kosong.*")
+        empty_state("Stack masih kosong.", "Muat riwayat atau push URL baru.", ikon="layers")
 
     st.caption(f"Ukuran Stack saat ini: **{stack.size()}**")
 
 with col_right:
-    st.subheader(":material/tune: Aksi & Kontrol")
-    if st.button("🗑️ Reset Stack", type="primary", width="stretch"):
+    page_header("Aksi & Kontrol", ikon="tune")
+    if st.button("Reset Stack", icon=":material/delete:", type="primary", width="stretch"):
         stack.clear()
         st.toast("Stack berhasil dikosongkan!")
         st.rerun()

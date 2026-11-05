@@ -17,6 +17,9 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
+from portal.theme import apply_theme
+from portal.ui import app_header
+
 try:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment
@@ -24,6 +27,7 @@ except ImportError:          # openpyxl belum terpasang
     openpyxl = None
 
 st.set_page_config(page_title="Daftar Tunggu Pasien", page_icon=":material/medical_services:", layout="wide")
+apply_theme()
 
 
 # =====================================================================
@@ -396,7 +400,7 @@ def aksi_panggil():
     pesan = (f"Memanggil Tiket No. {node.no_antrian} - {node.nama} ({node.keluhan}). "
              "Silakan masuk ke ruang periksa.")
     set_status("success", pesan)
-    st.toast(pesan, icon="📢")
+    st.toast(pesan, icon=":material/campaign:")
 
 
 def aksi_cari():
@@ -483,10 +487,13 @@ if n:
     st.session_state.pilih = min(max(st.session_state.get("pilih", 1), 1), n)
     st.session_state.tujuan = min(max(int(st.session_state.get("tujuan", 1)), 1), n)
 
-kiri, kanan = st.columns([4, 1])
-kiri.title(":material/medical_services: Daftar Tunggu Pasien Klinik")
-kiri.caption("Struktur Data  •  Single Linked List")
-kanan.metric("Pasien menunggu", n)
+app_header(
+    "pasien",
+    "Daftar Tunggu Pasien Klinik",
+    "Single Linked List",
+    "Atur daftar pasien, pindahkan urutan, dan lihat hubungan antar-node.",
+    aksi=lambda: st.metric("Pasien menunggu", n, border=True),
+)
 
 jenis, teks = st.session_state.status
 getattr(st, jenis)(teks)
@@ -526,9 +533,9 @@ with st.container(border=True):
         st.caption("Belum ada pasien. Tambahkan pasien terlebih dahulu.")
 
     a1, a2, a3, a4, a5 = st.columns([1, 1, 1, 2.2, 2.6], vertical_alignment="bottom")
-    a1.button("🗑 Hapus", on_click=aksi_hapus, disabled=(n == 0), width="stretch")
-    a2.button("▲ Naik", on_click=aksi_geser, args=(-1,), disabled=(n == 0), width="stretch")
-    a3.button("▼ Turun", on_click=aksi_geser, args=(1,), disabled=(n == 0), width="stretch")
+    a1.button("Hapus", icon=":material/delete:", on_click=aksi_hapus, disabled=(n == 0), width="stretch")
+    a2.button("Naik", icon=":material/arrow_upward:", on_click=aksi_geser, args=(-1,), disabled=(n == 0), width="stretch")
+    a3.button("Turun", icon=":material/arrow_downward:", on_click=aksi_geser, args=(1,), disabled=(n == 0), width="stretch")
     with a4:
         p1, p2 = st.columns([1, 1.4], vertical_alignment="bottom")
         p1.number_input("Pindah ke urutan", min_value=1, max_value=max(n, 1), step=1,
@@ -542,7 +549,7 @@ with st.container(border=True):
     b1, b2, b3 = st.columns([3, 1, 3], vertical_alignment="bottom")
     b1.text_input("Cari nama", key="cari", on_change=aksi_cari)
     b2.button("Cari", on_click=aksi_cari, width="stretch")
-    b3.button("📢 Panggil pasien depan", type="primary", on_click=aksi_panggil,
+    b3.button("Panggil pasien depan", type="primary", icon=":material/campaign:", on_click=aksi_panggil,
               disabled=(n == 0), width="stretch")
 
 # --- bentuk single linked list ---
@@ -561,7 +568,7 @@ with st.container(border=True):
         if openpyxl is None:
             st.caption("Excel butuh `pip install openpyxl`. Gunakan CSV.")
         else:
-            st.download_button("💾 Simpan ke Excel (.xlsx)",
+            st.download_button("Simpan ke Excel (.xlsx)", icon=":material/download:",
                                data=ke_bytes(simpan_xlsx, ".xlsx", baris_data) if n else b"",
                                file_name=f"daftar_tunggu_{waktu}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -574,5 +581,5 @@ with st.container(border=True):
         st.markdown("**Buka dari file**")
         st.file_uploader("Pilih file Excel / CSV (format apa pun yang memuat kolom nama dan keluhan)",
                          type=["xlsx", "csv"], key="berkas")
-        st.button("📂 Muat ke daftar", on_click=aksi_buka, width="stretch")
+        st.button("Muat ke daftar", icon=":material/upload_file:", on_click=aksi_buka, width="stretch")
         st.caption("Data saat ini akan diganti dengan isi file.")

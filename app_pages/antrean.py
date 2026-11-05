@@ -13,6 +13,8 @@ from pathlib import Path
 
 import streamlit as st
 from portal.sidebar import sidebar_header, sidebar_menu, sidebar_refresh
+from portal.theme import apply_theme
+from portal.ui import app_header, empty_state, metric_row, page_header
 
 WIB = timezone(timedelta(hours=7))
 BASE_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -280,8 +282,7 @@ def kartu_mahasiswa(m,label):
 
 
 def halaman_dashboard(sistem):
-    st.header('Pusat pelayanan mahasiswa')
-    st.caption('Satu loket · Semua jenis layanan mengikuti satu antrean FIFO.')
+    page_header('Pusat pelayanan mahasiswa', 'Satu loket · Semua jenis layanan mengikuti satu antrean FIFO.')
     kiri,kanan=st.columns(2)
     with kiri:kartu_mahasiswa(sistem.antrean.peek(),'BERIKUTNYA DILAYANI')
     with kanan:kartu_mahasiswa(sistem.sedang,'SEDANG DILAYANI')
@@ -292,13 +293,12 @@ def halaman_dashboard(sistem):
     st.subheader('Antrean terbaru')
     rows=tabel_antrean(sistem.antrean.semua()[:5])
     if rows:st.dataframe(rows,hide_index=True,width='stretch')
-    else:st.info('Belum ada mahasiswa menunggu. Tambahkan melalui menu Pendaftaran.')
+    else:empty_state('Belum ada mahasiswa menunggu.', 'Tambahkan melalui menu Pendaftaran.')
     st.caption('Alur: pendaftaran → menunggu → panggil berikutnya → sedang dilayani → selesai.')
 
 
 def halaman_daftar(sistem,store):
-    st.header('Pendaftaran antrean')
-    st.caption('Nomor tiket diterbitkan otomatis. Nama dan NIM wajib diisi.')
+    page_header('Pendaftaran antrean', 'Nomor tiket diterbitkan otomatis. Nama dan NIM wajib diisi.')
     with st.form('form_pendaftaran',border=True):
         st.text_input('Nama mahasiswa',key='nama_daftar',max_chars=150)
         st.text_input('NIM',key='nim_daftar',max_chars=40)
@@ -311,21 +311,21 @@ def halaman_daftar(sistem,store):
 
 
 def halaman_antrean(sistem):
-    st.header('Daftar antrean')
+    page_header('Daftar antrean')
     cari=st.text_input('Cari tiket, nama atau NIM',key='pencarian_antrean')
     rows=tabel_antrean(sistem.antrean.semua())
     query=cari.strip().casefold()
     filtered=[r for r in rows if not query or query in f"{r['Tiket']} {r['Nama']} {r['NIM']}".casefold()]
     st.caption(f'{len(filtered)} dari {len(rows)} mahasiswa ditampilkan. Pencarian dan pengurutan tabel tidak mengubah urutan pelayanan.')
     if filtered:st.dataframe(filtered,hide_index=True,width='stretch')
-    elif query:st.info('Tidak ada hasil untuk pencarian ini.')
-    else:st.info('Antrean masih kosong.')
+    elif query:empty_state('Tidak ada hasil untuk pencarian ini.')
+    else:empty_state('Antrean masih kosong.')
     with st.expander('Lihat antrean terdepan (peek)',expanded=True):
         kartu_mahasiswa(sistem.antrean.peek(),'PEEK: HANYA MEMBACA, TIDAK MENGHAPUS')
 
 
 def halaman_pelayanan(sistem,store):
-    st.header('Loket pelayanan')
+    page_header('Loket pelayanan')
     depan=sistem.antrean.peek()
     kiri,kanan=st.columns(2)
     with kiri:
@@ -342,31 +342,28 @@ def halaman_pelayanan(sistem,store):
 
 
 def halaman_riwayat(sistem):
-    st.header('Riwayat pelayanan')
+    page_header('Riwayat pelayanan')
     cari=st.text_input('Cari nama, NIM atau tiket',key='pencarian_riwayat')
     query=cari.strip().casefold()
     data=[m for m in reversed(sistem.riwayat) if not query or query in f"{tiket(m)} {m['nama']} {m['nim']}".casefold()]
     rows=[{'Tiket':tiket(m),'Nama':m['nama'],'NIM':m['nim'],'Layanan':m['layanan'],
            'Mulai dilayani':m['mulai'].replace('T',' '),'Selesai':m['selesai'].replace('T',' ')} for m in data]
     if rows:st.dataframe(rows,hide_index=True,width='stretch')
-    else:st.info('Belum ada riwayat yang cocok.')
+    else:empty_state('Belum ada riwayat yang cocok.')
     st.download_button('Unduh riwayat CSV',data=csv_riwayat(data),file_name='Riwayat_Pelayanan_Mahasiswa.csv',
                        mime='text/csv',icon=':material/download:',disabled=not data,on_click='ignore')
     st.caption(f'{len(data)} pelayanan ditampilkan. Unduhan mengikuti hasil pencarian.')
 
 
 def halaman_visual(sistem):
-    st.header('Visualisasi queue FIFO')
+    page_header('Visualisasi queue FIFO')
     q=sistem.antrean
     depan=q.peek()
-    with st.container(horizontal=True):
-        st.metric('isEmpty()',str(q.isEmpty()),border=True)
-        st.metric('jumlah()',q.jumlah(),border=True)
-        st.metric('peek()',tiket(depan) if depan else 'None',border=True)
+    metric_row([('isEmpty()',str(q.isEmpty())),('jumlah()',q.jumlah()),('peek()',tiket(depan) if depan else 'None')])
     st.caption('Enqueue: masuk dari REAR. Dequeue: keluar dari FRONT. Peek tidak menghapus data.')
     rows=q.semua()
     if not rows:
-        st.info('Queue kosong. Tambahkan mahasiswa di Pendaftaran.')
+        empty_state('Queue kosong.', 'Tambahkan mahasiswa di Pendaftaran.', ikon='account_tree')
         return
     halaman_max=max(1,(len(rows)+11)//12)
     if st.session_state.get('halaman_fifo',1)>halaman_max:st.session_state['halaman_fifo']=halaman_max
@@ -385,6 +382,7 @@ def halaman_visual(sistem):
 
 def main():
     st.set_page_config(page_title='AntreanKu | Pelayanan mahasiswa',page_icon=':material/groups:',layout='wide')
+    apply_theme()
     try:
         store=AntreanStore()
         sistem=store.baca()
@@ -400,14 +398,15 @@ def main():
                 'Pelayanan':'support_agent','Riwayat':'history','Visualisasi FIFO':'account_tree'})
             sidebar_refresh('antrean_refresh')
             st.caption('Satu loket · FIFO · Waktu Indonesia Barat')
-    st.title('Pelayanan mahasiswa')
-    st.caption('Daftar, pantau antrean, dan selesaikan pelayanan dalam satu tempat.')
+    app_header('antrean', 'Pelayanan mahasiswa', 'Queue · FIFO',
+               'Daftar, pantau antrean, dan selesaikan pelayanan dalam satu tempat.')
     hari=sekarang().date().isoformat()
-    with st.container(horizontal=True):
-        st.metric('Menunggu',sistem.antrean.jumlah(),border=True)
-        st.metric('Sedang dilayani',1 if sistem.sedang else 0,border=True)
-        st.metric('Selesai hari ini',sum(m['selesai'][:10]==hari for m in sistem.riwayat),border=True)
-        st.metric('Total pendaftaran',sistem.antrean.jumlah()+(1 if sistem.sedang else 0)+len(sistem.riwayat),border=True)
+    metric_row([
+        ('Menunggu',sistem.antrean.jumlah()),
+        ('Sedang dilayani',1 if sistem.sedang else 0),
+        ('Selesai hari ini',sum(m['selesai'][:10]==hari for m in sistem.riwayat)),
+        ('Total pendaftaran',sistem.antrean.jumlah()+(1 if sistem.sedang else 0)+len(sistem.riwayat)),
+    ])
     if 'pesan' in st.session_state:
         jenis,pesan=st.session_state.pop('pesan')
         if jenis=='success':st.success(pesan)

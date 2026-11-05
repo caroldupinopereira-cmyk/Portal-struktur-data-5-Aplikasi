@@ -13,6 +13,8 @@ import hashlib
 
 import streamlit as st
 from portal.sidebar import sidebar_header, sidebar_menu, sidebar_refresh
+from portal.theme import apply_theme
+from portal.ui import app_header, empty_state, metric_row, page_header
 
 WIB = timezone(timedelta(hours=7))
 BASE_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -641,20 +643,22 @@ def format_kamar(h,n):
 
 def ringkasan(h):
     jumlah=lambda s:sum(k.status==s for k in h.kamar.values())
-    with st.container(horizontal=True):
-        st.metric('Kamar kosong',jumlah('Kosong'),border=True)
-        st.metric('Kamar terisi',jumlah('Terisi'),border=True)
-        st.metric('Tamu menginap',sum(i.jumlah_orang for i in h.aktif.values()),border=True)
-        st.metric('Okupansi',f'{jumlah("Terisi")}% ',border=True)
+    metric_row([
+        ('Kamar kosong',jumlah('Kosong')),
+        ('Kamar terisi',jumlah('Terisi')),
+        ('Tamu menginap',sum(i.jumlah_orang for i in h.aktif.values())),
+        ('Okupansi',f'{jumlah("Terisi")}% '),
+    ])
     st.caption(f'10 lantai · 100 kamar · Kapasitas 220 orang · Dibersihkan {jumlah("Dibersihkan")} · Perawatan {jumlah("Perawatan")}')
 
 
 def dashboard(h):
-    st.header('Ringkasan hotel')
-    with st.container(horizontal=True):
-        st.metric('Pendapatan transaksi selesai',rupiah(sum(t['total'] for t in h.transaksi)),border=True)
-        st.metric('Check-in aktif',len(h.aktif),border=True)
-        st.metric('Transaksi selesai',len(h.transaksi),border=True)
+    page_header('Ringkasan hotel')
+    metric_row([
+        ('Pendapatan transaksi selesai',rupiah(sum(t['total'] for t in h.transaksi))),
+        ('Check-in aktif',len(h.aktif)),
+        ('Transaksi selesai',len(h.transaksi)),
+    ])
     rekap=[]
     for lantai in range(1,11):
         ks=[k for k in h.kamar.values() if k.lantai==lantai]
@@ -670,7 +674,7 @@ def dashboard(h):
 
 
 def denah(h):
-    st.header('Denah hotel')
+    page_header('Denah hotel')
     lantai=st.selectbox('Pilih lantai',list(range(1,11)),key='denah_lantai')
     st.caption('Empat kamar single, tiga double, dan tiga family pada setiap lantai. Harga per kamar per malam.')
     warna={'Kosong':'green','Terisi':'blue','Dibersihkan':'orange','Perawatan':'red'}
@@ -691,7 +695,7 @@ def denah(h):
 
 
 def halaman_kamar(h,store):
-    st.header('Data dan kesiapan kamar')
+    page_header('Data dan kesiapan kamar')
     kiri,kanan=st.columns(2)
     lantai=kiri.selectbox('Lantai',['Semua']+list(range(1,11)),key='filter_lantai_kamar')
     status=kanan.selectbox('Status',['Semua','Kosong','Terisi','Dibersihkan','Perawatan'],key='filter_status_kamar')
@@ -700,7 +704,7 @@ def halaman_kamar(h,store):
     kosong=[k.nomor for k in h.kamar.values() if k.penghuni is None]
     st.subheader('Ubah status kamar tanpa penghuni')
     if not kosong:
-        st.info('Semua kamar sedang ditempati.')
+        empty_state('Semua kamar sedang ditempati.')
         return
     hint=st.session_state.pop('pilihan_kamar_hint',None)
     if hint in kosong:st.session_state['status_nomor']=hint
@@ -797,7 +801,7 @@ def impor_excel(h,store):
 
 
 def halaman_checkin(h,store):
-    st.header('Check-in tamu')
+    page_header('Check-in tamu')
     manual,excel=st.tabs(['Pilih kamar & daftar','Impor Excel'])
     with manual:checkin_manual(h,store)
     with excel:impor_excel(h,store)
@@ -829,7 +833,7 @@ def tampilkan_struk(data,key):
 
 
 def halaman_tamu(h,store):
-    st.header('Tamu menginap')
+    page_header('Tamu menginap')
     if st.session_state.get('struk_terakhir'):tampilkan_struk(st.session_state['struk_terakhir'],'struk_baru')
     aktif=[k for k in h.kamar.values() if k.penghuni]
     cari=st.text_input('Cari nama atau nomor kamar',key='cari_tamu').strip().casefold()
@@ -837,7 +841,7 @@ def halaman_tamu(h,store):
            'Orang':k.penghuni.jumlah_orang,'Masuk':k.penghuni.masuk,'Rencana keluar':k.penghuni.rencana_keluar} for k in aktif
           if not cari or cari in f'{k.nomor} {k.penghuni.tamu.nama}'.casefold()]
     if rows:st.dataframe(rows,hide_index=True)
-    else:st.info('Tidak ada tamu yang cocok dengan pencarian.' if cari else 'Belum ada tamu menginap.')
+    else:empty_state('Tidak ada tamu yang cocok dengan pencarian.' if cari else 'Belum ada tamu menginap.')
     if not aktif:return
     nomor_aktif=[k.nomor for k in aktif]
     hint=st.session_state.pop('pilihan_kamar_hint',None)
@@ -851,7 +855,7 @@ def halaman_tamu(h,store):
     pindah,layanan,checkout=st.tabs(['Pindah kamar','Layanan tambahan','Tagihan & check-out'])
     with pindah:
         tujuan=[x.nomor for x in h.kamar.values() if x.status=='Kosong' and x.kapasitas>=inap.jumlah_orang]
-        if not tujuan:st.info('Tidak ada kamar kosong yang kapasitasnya cukup.')
+        if not tujuan:empty_state('Tidak ada kamar kosong yang kapasitasnya cukup.')
         else:
             if st.session_state.get('pindah_tujuan') not in tujuan:st.session_state['pindah_tujuan']=tujuan[0]
             with st.form('form_pindah'):
@@ -882,7 +886,7 @@ def halaman_tamu(h,store):
 
 
 def halaman_transaksi(h):
-    st.header('Transaksi dan riwayat')
+    page_header('Transaksi dan riwayat')
     cari=st.text_input('Cari nama atau ID transaksi',key='cari_transaksi').strip().casefold()
     data=[t for t in reversed(h.transaksi) if not cari or cari in f'{t["id"]} {t["tamu"]["nama"]}'.casefold()]
     if data:
@@ -895,14 +899,14 @@ def halaman_transaksi(h):
         identitas=st.selectbox('Pilih struk',ids,key='transaksi_id',format_func=lambda ident:next(
             f'{t["tamu"]["nama"]} · {t["keluar"]} · {rupiah(t["total"])}' for t in data if t['id']==ident))
         tampilkan_struk(next(t for t in data if t['id']==identitas),'struk_transaksi')
-    else:st.info('Belum ada transaksi selesai yang cocok.')
+    else:empty_state('Belum ada transaksi selesai yang cocok.')
     with st.expander('Aktivitas hotel terakhir'):
         if h.riwayat:st.dataframe(list(reversed(h.riwayat[-100:])),hide_index=True)
         else:st.caption('Belum ada aktivitas.')
 
 
 def halaman_laporan(h):
-    st.header('Laporan hotel')
+    page_header('Laporan hotel')
     st.caption('Periode menyaring transaksi berdasarkan tanggal check-out. Kamar dan tamu aktif adalah snapshot saat ekspor.')
     kiri,kanan=st.columns(2)
     mulai=kiri.date_input('Awal periode',value=datetime.now(WIB).date().replace(day=1),key='laporan_mulai')
@@ -911,10 +915,11 @@ def halaman_laporan(h):
         st.error('Akhir periode harus sama atau setelah awal periode.')
         return
     data=[t for t in h.transaksi if mulai<=tanggal(t['keluar'])<=akhir]
-    with st.container(horizontal=True):
-        st.metric('Transaksi selesai',len(data),border=True)
-        st.metric('Tamu check-out',sum(t.get('jumlah_orang',1) for t in data),border=True)
-        st.metric('Pendapatan periode',rupiah(sum(t['total'] for t in data)),border=True)
+    metric_row([
+        ('Transaksi selesai',len(data)),
+        ('Tamu check-out',sum(t.get('jumlah_orang',1) for t in data)),
+        ('Pendapatan periode',rupiah(sum(t['total'] for t in data))),
+    ])
     st.caption('Ekspor berisi Ringkasan, Kamar Saat Ekspor, Tamu Aktif, Transaksi Periode, Rincian Kamar, Rincian Layanan, dan Aktivitas Periode.')
     fingerprint=hashlib.sha256(json.dumps(h.data(),sort_keys=True).encode()).hexdigest()
     signature=(mulai.isoformat(),akhir.isoformat(),fingerprint)
@@ -935,7 +940,7 @@ def halaman_laporan(h):
 
 
 def halaman_referensi(h):
-    st.header('Visualisasi referensi objek')
+    page_header('Visualisasi referensi objek')
     lantai=st.selectbox('Lantai untuk visualisasi',list(range(1,11)),key='ref_lantai')
     st.caption('Kamar.penghuni → objek Menginap → objek Tamu. ID aplikasi bukan alamat memori asli.')
     nodes=['digraph hotel { rankdir=LR; node [shape=box, style="rounded,filled", fillcolor="#EFF6FF"];']
@@ -960,6 +965,7 @@ def halaman_referensi(h):
 
 def main():
     st.set_page_config(page_title='HotelKu | Kelompok 8',page_icon=':material/apartment:',layout='wide')
+    apply_theme()
     try:
         store=HotelStore()
         h=store.baca()
@@ -975,7 +981,8 @@ def main():
                 'Tamu menginap':'people','Transaksi':'receipt_long','Laporan':'bar_chart','Referensi objek':'account_tree'})
             sidebar_refresh('hotel_refresh')
             st.caption('Kelompok 8 · 10 lantai · 100 kamar')
-    st.title('Manajemen hotel')
+    app_header('hotel', 'Manajemen hotel', 'Referensi objek',
+               'Kelola kesiapan kamar, tamu, dan transaksi hotel.')
     ringkasan(h)
     if 'pesan' in st.session_state:
         jenis,pesan=st.session_state.pop('pesan')
